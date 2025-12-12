@@ -1,4 +1,4 @@
-# client-starter-code
+# final-project-client
 
 Group member:
 
