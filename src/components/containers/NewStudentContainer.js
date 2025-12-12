@@ -1,96 +1,122 @@
-/*==================================================
-NewStudentContainer.js
-
-The Container component is responsible for stateful logic and data fetching, and
-passes data (if any) as props to the corresponding View component.
-If needed, it also defines the component's "connect" function.
-================================================== */
 import Header from './Header';
 import { Component } from 'react';
 import { connect } from 'react-redux';
 import { Redirect } from 'react-router-dom';
 
 import NewStudentView from '../views/NewStudentView';
-import { addStudentThunk } from '../../store/thunks';
+import { addStudentThunk, fetchAllCampusesThunk } from '../../store/thunks';
 
 class NewStudentContainer extends Component {
-  // Initialize state
   constructor(props){
     super(props);
     this.state = {
-      firstname: "", 
-      lastname: "", 
-      campusId: null, 
-      redirect: false, 
+      firstname: "",
+      lastname: "",
+      email: "",
+      imageUrl: "",
+      gpa: "",
+      campusId: "",
+
+      errors: {},
+
+      redirect: false,
       redirectId: null
     };
   }
 
-  // Capture input data when it is entered
-  handleChange = event => {
-    this.setState({
-      [event.target.name]: event.target.value
-    });
+  componentDidMount() {
+    // needed for campus dropdown
+    this.props.fetchAllCampuses();
   }
 
-  // Take action after user click the submit button
-  handleSubmit = async event => {
-    event.preventDefault();  // Prevent browser reload/refresh after submit.
+  validate = () => {
+    const errors = {};
+    if (!this.state.firstname.trim()) errors.firstname = "First name is required.";
+    if (!this.state.lastname.trim()) errors.lastname = "Last name is required.";
 
-    let student = {
-        firstname: this.state.firstname,
-        lastname: this.state.lastname,
-        campusId: this.state.campusId
-    };
-    
-    // Add new student in back-end database
-    let newStudent = await this.props.addStudent(student);
+    if (!this.state.email.trim()) errors.email = "Email is required.";
+    else if (!/\S+@\S+\.\S+/.test(this.state.email)) errors.email = "Invalid email.";
 
-    // Update state, and trigger redirect to show the new student
-    this.setState({
-      firstname: "", 
-      lastname: "", 
-      campusId: null, 
-      redirect: true, 
-      redirectId: newStudent.id
-    });
-  }
-
-  // Unmount when the component is being removed from the DOM:
-  componentWillUnmount() {
-      this.setState({redirect: false, redirectId: null});
-  }
-
-  // Render new student input form
-  render() {
-    // Redirect to new student's page after submit
-    if(this.state.redirect) {
-      return (<Redirect to={`/student/${this.state.redirectId}`}/>)
+    if (this.state.gpa !== "") {
+      const g = Number(this.state.gpa);
+      if (Number.isNaN(g) || g < 0 || g > 4) errors.gpa = "GPA must be between 0.0 and 4.0";
     }
 
-    // Display the input form via the corresponding View component
+    return errors;
+  };
+
+  handleChange = (event) => {
+    this.setState({ [event.target.name]: event.target.value });
+  }
+
+  handleSubmit = async (event) => {
+    event.preventDefault();
+
+    const errors = this.validate();
+    this.setState({ errors });
+    if (Object.keys(errors).length) return;
+
+    const student = {
+      firstname: this.state.firstname,
+      lastname: this.state.lastname,
+      email: this.state.email,
+      imageUrl: this.state.imageUrl,
+      gpa: this.state.gpa === "" ? null : Number(this.state.gpa),
+      campusId: this.state.campusId === "" ? null : Number(this.state.campusId),
+    };
+
+    const newStudent = await this.props.addStudent(student);
+
+    this.setState({
+      firstname: "",
+      lastname: "",
+      email: "",
+      imageUrl: "",
+      gpa: "",
+      campusId: "",
+      errors: {},
+
+      redirect: true,
+      redirectId: newStudent?.id ?? null
+    });
+  }
+
+  componentWillUnmount() {
+    this.setState({ redirect: false, redirectId: null });
+  }
+
+  render() {
+    if (this.state.redirect && this.state.redirectId) {
+      return <Redirect to={`/student/${this.state.redirectId}`} />;
+    }
+
     return (
       <div>
         <Header />
-        <NewStudentView 
-          handleChange = {this.handleChange} 
-          handleSubmit={this.handleSubmit}      
+        <NewStudentView
+          firstname={this.state.firstname}
+          lastname={this.state.lastname}
+          email={this.state.email}
+          imageUrl={this.state.imageUrl}
+          gpa={this.state.gpa}
+          campusId={this.state.campusId}
+          campuses={this.props.allCampuses}
+          errors={this.state.errors}
+          handleChange={this.handleChange}
+          handleSubmit={this.handleSubmit}
         />
-      </div>          
+      </div>
     );
   }
 }
 
-// The following input argument is passed to the "connect" function used by "NewStudentContainer" component to connect to Redux Store.
-// The "mapDispatch" argument is used to dispatch Action (Redux Thunk) to Redux Store.
-// The "mapDispatch" calls the specific Thunk to dispatch its action. The "dispatch" is a function of Redux Store.
-const mapDispatch = (dispatch) => {
-    return({
-        addStudent: (student) => dispatch(addStudentThunk(student)),
-    })
-}
+const mapState = (state) => ({
+  allCampuses: state.allCampuses,
+});
 
-// Export store-connected container by default
-// NewStudentContainer uses "connect" function to connect to Redux Store and to read values from the Store 
-// (and re-read the values when the Store State updates).
-export default connect(null, mapDispatch)(NewStudentContainer);
+const mapDispatch = (dispatch) => ({
+  addStudent: (student) => dispatch(addStudentThunk(student)),
+  fetchAllCampuses: () => dispatch(fetchAllCampusesThunk()),
+});
+
+export default connect(mapState, mapDispatch)(NewStudentContainer);
