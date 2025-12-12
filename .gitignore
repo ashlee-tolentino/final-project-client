@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+/*.log
+
+# prevent secrets from being committed
+*.pem
+*.key
+*.pub
+id_rsa
+id_ed25519
+.ssh/
