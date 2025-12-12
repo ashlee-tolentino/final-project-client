@@ -1,31 +1,62 @@
-/*==================================================
-CampusView.js
-
-The Views component is responsible for rendering web page with data provided by the corresponding Container component.
-It constructs a React component to display a single campus and its students (if any).
-================================================== */
 import { Link } from "react-router-dom";
 
-// Take in props data to construct the component
-const CampusView = (props) => {
-  const {campus} = props;
-  
-  // Render a single Campus view with list of its students
+const CampusView = ({ campus, deleteCampus }) => {
+  // Safety: campus might not be loaded yet
+  if (!campus || !campus.id) {
+    return <p>Loading campus...</p>;
+  }
+
+  const students = campus.students || [];
+
   return (
     <div>
       <h1>{campus.name}</h1>
-      <p>{campus.address}</p>
+
+      {/* Campus image */}
+      {campus.imageUrl && (
+        <img
+          src={campus.imageUrl}
+          alt={campus.name}
+          width="400"
+        />
+      )}
+
+      <p><strong>Address:</strong> {campus.address}</p>
       <p>{campus.description}</p>
-      {campus.students.map( student => {
-        let name = student.firstname + " " + student.lastname;
-        return (
-          <div key={student.id}>
-            <Link to={`/student/${student.id}`}>
-              <h2>{name}</h2>
-            </Link>             
-          </div>
-        );
-      })}
+
+      {/* Actions */}
+      <div style={{ marginBottom: "1rem" }}>
+        <Link to={`/campus/${campus.id}/edit`}>
+          <button>Edit Campus</button>
+        </Link>
+
+        {deleteCampus && (
+          <button onClick={deleteCampus} style={{ marginLeft: "0.5rem" }}>
+            Delete Campus
+          </button>
+        )}
+      </div>
+
+      <h2>Students Enrolled</h2>
+      {students.length === 0 ? (
+        <p>No students are currently enrolled at this campus.</p>
+      ) : (
+        students.map((student) => {
+          const name = `${student.firstname} ${student.lastname}`;
+          return (
+            <div key={student.id}>
+              <Link to={`/student/${student.id}`}>
+                <h3>{name}</h3>
+              </Link>
+            </div>
+          );
+        })
+      )}
+
+      <br />
+      <Link to="/newstudent">
+        <button>Add New Student</button>
+      </Link>
     </div>
   );
 };
